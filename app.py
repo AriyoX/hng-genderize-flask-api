@@ -1,10 +1,13 @@
 from flask import Flask, jsonify, request
 from datetime import datetime, timezone
+import re
 import requests
+from werkzeug.exceptions import HTTPException
 
 app = Flask(__name__)
 
 GENDERIZE_URL = "https://api.genderize.io"
+NAME_PATTERN = re.compile(r"^[A-Za-z][A-Za-z'-]*$")
 
 
 def add_cors_headers(response):
@@ -13,6 +16,15 @@ def add_cors_headers(response):
 
 
 app.after_request(add_cors_headers)
+
+
+@app.errorhandler(Exception)
+def handle_server_errors(exc):
+    if isinstance(exc, HTTPException):
+        return jsonify({"status": "error", "message": exc.description}), exc.code
+
+    app.logger.error("Unhandled server error: %s", exc)
+    return jsonify({"status": "error", "message": "Internal server error"}), 500
 
 @app.route("/")
 def index():
@@ -23,10 +35,12 @@ def index():
 def classify_name():
     name = request.args.get("name")
 
-    if name is None or name == "":
+    if name is None or name.strip() == "":
         return jsonify({"status": "error", "message": "Missing or empty name parameter"}), 400
 
-    if not isinstance(name, str):
+    name = name.strip()
+
+    if not NAME_PATTERN.fullmatch(name):
         return jsonify({"status": "error", "message": "name must be a string"}), 422
 
     try:
