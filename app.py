@@ -14,6 +14,10 @@ def add_cors_headers(response):
 
 app.after_request(add_cors_headers)
 
+@app.route("/")
+def index():
+    return jsonify({"status": "ok", "message": "Welcome to Ariyo's sumbission! Use the /api/classify endpoint with a 'name' query parameter to classify a name"}), 200
+
 
 @app.route("/api/classify", methods=["GET"])
 def classify_name():
